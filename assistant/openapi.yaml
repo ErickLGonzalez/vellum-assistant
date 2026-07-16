@@ -31633,6 +31633,8 @@ components:
         - atlascloud
         - together
         - baseten
+        - vellum
+        - chatgpt
     ProfilePatchEntry:
       type: object
       properties:
