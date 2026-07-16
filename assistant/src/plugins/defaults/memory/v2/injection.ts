@@ -24,7 +24,6 @@
 // cached prefix bytes-identical across turns.
 
 import type { AssistantConfig } from "../../../../config/types.js";
-import type { DrizzleDb } from "../../../../persistence/db-connection.js";
 import { getLogger } from "../logging.js";
 import {
   type MemoryV2ConceptRowRecord,
@@ -76,8 +75,6 @@ export type InjectMemoryV2Mode = "context-load" | "per-turn";
 type FinalizeInjectionMode = InjectMemoryV2Mode | "router" | "errored";
 
 export interface InjectMemoryV2BlockParams {
-  /** SQLite database handle for activation_state hydrate/save. */
-  database: DrizzleDb;
   /** Conversation key for hydrate/save. */
   conversationId: string;
   /** Caller-tracked turn number, persisted with each new everInjected entry. */
@@ -141,7 +138,6 @@ export async function injectMemoryV2Block(
   params: InjectMemoryV2BlockParams,
 ): Promise<InjectMemoryV2BlockResult> {
   const {
-    database,
     conversationId,
     currentTurn,
     recentTurnPairs,
@@ -165,7 +161,7 @@ export async function injectMemoryV2Block(
   // (1) Hydrate. Missing rows are normal at conversation start — proceed
   // with an effective empty prior state so the first turn can still inject.
   throwIfAborted(signal);
-  const priorState = await hydrate(database, conversationId);
+  const priorState = await hydrate(conversationId);
 
   // Flag-gated router dispatch: when the LLM router is enabled, route the
   // page selection through `runRouter` and reuse `finalizeInjection` for
@@ -182,7 +178,6 @@ export async function injectMemoryV2Block(
   if (config.memory.v2.router.enabled) {
     return injectViaRouter({
       workspaceDir,
-      database,
       conversationId,
       currentTurn,
       recentTurnPairs,
@@ -283,7 +278,6 @@ export async function injectMemoryV2Block(
 
   return finalizeInjection({
     workspaceDir,
-    database,
     conversationId,
     mode,
     currentTurn,
@@ -322,7 +316,6 @@ export async function injectMemoryV2Block(
  */
 async function finalizeInjection(args: {
   workspaceDir: string;
-  database: DrizzleDb;
   conversationId: string;
   mode: FinalizeInjectionMode;
   currentTurn: number;
@@ -343,7 +336,6 @@ async function finalizeInjection(args: {
 }): Promise<InjectMemoryV2BlockResult> {
   const {
     workspaceDir,
-    database,
     conversationId,
     currentTurn,
     messageId,
@@ -416,7 +408,7 @@ async function finalizeInjection(args: {
   let caughtErr: unknown = undefined;
 
   try {
-    await save(database, conversationId, nextActivationState);
+    await save(conversationId, nextActivationState);
 
     // Render before recording telemetry so the activation log can mark slugs
     // whose backing file is gone or failed to load — those are no-op renders
@@ -528,7 +520,6 @@ async function finalizeInjection(args: {
  */
 async function injectViaRouter(args: {
   workspaceDir: string;
-  database: DrizzleDb;
   conversationId: string;
   currentTurn: number;
   recentTurnPairs: readonly RouterTurnPair[];
@@ -540,7 +531,6 @@ async function injectViaRouter(args: {
 }): Promise<InjectMemoryV2BlockResult> {
   const {
     workspaceDir,
-    database,
     conversationId,
     currentTurn,
     recentTurnPairs,
@@ -579,7 +569,6 @@ async function injectViaRouter(args: {
     );
     return finalizeInjection({
       workspaceDir,
-      database,
       conversationId,
       mode: "router",
       currentTurn,
@@ -640,7 +629,6 @@ async function injectViaRouter(args: {
     // to abort the turn on top of the router failure that already happened.
     return finalizeInjection({
       workspaceDir,
-      database,
       conversationId,
       mode: "errored",
       currentTurn,
@@ -699,7 +687,6 @@ async function injectViaRouter(args: {
 
   return finalizeInjection({
     workspaceDir,
-    database,
     conversationId,
     mode: "router",
     currentTurn,

@@ -447,6 +447,8 @@ import { migrateMoveMemoryV2ActivationLogsToMemoryDb } from "./migrations/336-mo
 import { migrateMoveMemoryRecallLogsToMemoryDb } from "./migrations/337-move-memory-recall-logs-to-memory-db.js";
 import { migrateMoveMemoryV3SelectionsToMemoryDb } from "./migrations/338-move-memory-v3-selections-to-memory-db.js";
 import { migrateMoveActivationSessionsToMemoryDb } from "./migrations/339-move-activation-sessions-to-memory-db.js";
+import { migrateMoveActivationStateToMemoryDb } from "./migrations/340-move-activation-state-to-memory-db.js";
+import { migrateMoveConversationGraphMemoryStateToMemoryDb } from "./migrations/341-move-conversation-graph-memory-state-to-memory-db.js";
 import type { MigrationStep } from "./migrations/run-migrations.js";
 
 export const migrationSteps: MigrationStep[] = [
@@ -1392,5 +1394,15 @@ export const migrationSteps: MigrationStep[] = [
     name: "migrateMoveActivationSessionsToMemoryDb",
     run: migrateMoveActivationSessionsToMemoryDb,
     dependsOn: ["createActivationSessionsTable"],
+  },
+  {
+    name: "migrateMoveActivationStateToMemoryDb",
+    run: migrateMoveActivationStateToMemoryDb,
+    dependsOn: ["migrateActivationState", "migrateActivationStateFkCascade"],
+  },
+  {
+    name: "migrateMoveConversationGraphMemoryStateToMemoryDb",
+    run: migrateMoveConversationGraphMemoryStateToMemoryDb,
+    dependsOn: ["migrateCreateConversationGraphMemoryState"],
   },
 ];
