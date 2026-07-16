@@ -180,8 +180,8 @@ const { getSqliteFrom } =
   await import("../../../../../persistence/db-connection.js");
 const { migrateActivationState } =
   await import("../../../../../persistence/migrations/232-activation-state.js");
-const { migrateAddMemoryV3EverInjected } =
-  await import("../../../../../persistence/migrations/277-add-memory-v3-ever-injected.js");
+const { ensureMemoryV3EverInjectedSchema } =
+  await import("../../../../../persistence/migrations/342-move-memory-v3-ever-injected-to-memory-db.js");
 const { getActiveSlugs: getV3ActiveSlugs, recordInjected: recordV3Injected } =
   await import("../../v3/ever-injected-store.js");
 const schema = await import("../../../../../persistence/schema/index.js");
@@ -195,6 +195,9 @@ const { hydrate: hydrateActivationState, save: saveActivationState } =
 // others. A live mutable holder lets each `beforeEach` swap the handle
 // without re-registering the mock.
 let testDbHandle: DrizzleDb | null = null;
+// memory-v3's everInjected record lives on the dedicated memory connection now;
+// each test db carries a matching in-memory memory connection.
+let memorySqliteHandle: Database | null = null;
 const realDbModule =
   await import("../../../../../persistence/db-connection.js");
 mock.module("../../../../../persistence/db-connection.js", () => ({
@@ -203,6 +206,7 @@ mock.module("../../../../../persistence/db-connection.js", () => ({
     if (!testDbHandle) throw new Error("test db not initialized");
     return testDbHandle;
   },
+  getMemorySqlite: () => memorySqliteHandle,
 }));
 
 // ---------------------------------------------------------------------------
@@ -222,8 +226,10 @@ function createTestDb(): DrizzleDb {
     )
   `);
   migrateActivationState(db);
-  // `onCompacted` also clears memory-v3's everInjected record.
-  migrateAddMemoryV3EverInjected(db);
+  // `onCompacted` also clears memory-v3's everInjected record, which lives on
+  // the memory connection.
+  memorySqliteHandle = new Database(":memory:");
+  ensureMemoryV3EverInjectedSchema(memorySqliteHandle);
   return db;
 }
 

@@ -21,7 +21,12 @@ import {
   getMessages,
 } from "../persistence/conversation-crud.js";
 import { getConversationDirPath } from "../persistence/conversation-disk-view.js";
-import { getDb, getLogsDb, getMemoryDb } from "../persistence/db-connection.js";
+import {
+  getDb,
+  getLogsDb,
+  getMemoryDb,
+  getMemorySqlite,
+} from "../persistence/db-connection.js";
 import { initializeDb } from "../persistence/db-init.js";
 import { getRequestLogsByMessageId } from "../persistence/llm-request-log-store.js";
 import { stringifyMessageContent } from "../persistence/message-content.js";
@@ -66,11 +71,13 @@ function resetTables(): void {
   db.delete(activationState).run();
   db.delete(conversationCompactionEvents).run();
   db.delete(conversationGraphMemoryState).run();
-  db.delete(memoryRetrospectiveState).run();
+  // memory_retrospective_state and memory_v3_ever_injected live on the memory
+  // connection now.
+  getMemoryDb()!.delete(memoryRetrospectiveState).run();
   getLogsDb()!.delete(llmRequestLogs).run();
   db.delete(toolInvocations).run();
   getMemoryDb()!.delete(memoryJobs).run();
-  db.run("DELETE FROM memory_v3_ever_injected");
+  getMemorySqlite()!.exec("DELETE FROM memory_v3_ever_injected");
   db.run("DELETE FROM message_attachments");
   db.run("DELETE FROM attachments");
   db.run("DELETE FROM messages");
