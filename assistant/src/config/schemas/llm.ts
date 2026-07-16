@@ -32,6 +32,12 @@ export const LLMProvider = z
     "atlascloud",
     "together",
     "baseten",
+    // Routing identities rather than adapters: "vellum" = the platform-managed
+    // route (upstream derived from the model at dispatch), "chatgpt" = the
+    // subscription route to OpenAI. Neither has a PROVIDER_CATALOG entry;
+    // dispatch substitutes the real upstream before any adapter lookup.
+    "vellum",
+    "chatgpt",
   ])
   .meta({ id: "LLMProvider" });
 type LLMProvider = z.infer<typeof LLMProvider>;
